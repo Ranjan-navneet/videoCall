@@ -14,6 +14,10 @@ var HideCamBtn = document.getElementById("Hide-cam");
 var leaveRoomBtn = document.getElementById("leave-btn");
 var recordBtn = document.getElementById("record-btn");
 var stopRecordBtn = document.getElementById("stop-btn");
+const otpButton = document.getElementById('generate-otp-btn');
+otpButton.addEventListener('click', sendOTP);
+
+
 var muteFlag = false;
 var hideCamFlag = false;
 
@@ -35,6 +39,39 @@ var iceServers = {
     },
   ],
 };
+
+// Listen for the 'otp-generated' event from the server
+// Listen for the 'send-otp' event from the server
+socket.on('send-otp', function () {
+  sendOTP();
+});
+
+// Listen for the 'otp-generated' event from the server
+socket.on('otp-generated', function (data) {
+  const { otp } = data;
+  
+  // Display the received OTP to the user
+  blurt(`Generated OTP: ${otp}`);
+  
+});
+
+// Function to handle sending OTP
+function sendOTP() {
+  // Make a POST request to the server to generate OTP
+  axios.post('/send-otp')
+    .then(response => {
+      const { otp } = response.data;
+      
+      // Emit the generated OTP to the server
+      socket.emit('otp-generated', { otp });
+    })
+    .catch(error => {
+      console.error('Error sending OTP:', error);
+      alert('Error generating OTP. Please try again.');
+    });
+}
+
+// Add event listener to the button to send OTP
 
 
 // "variable" will be used in client side.

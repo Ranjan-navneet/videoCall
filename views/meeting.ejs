@@ -14,14 +14,14 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #ADD8E6;
+            background-color: #add8e6;
         }
 
         form {
             background-color: #fff;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 18px;
+            box-shadow: 10px 20px 30px grey;
         }
 
         label {
@@ -73,7 +73,7 @@
 </head>
 
 <body>
-    <form id="meetingForm">
+    <form id="meetingForm"><hr>
         <h2 style="text-align: center;">Chola Schedule</h2>
         <hr>
         <label for="time">Time <i>(hh:mm):</i></label>
@@ -86,7 +86,7 @@
         <textarea id="description" name="description" rows="4" cols="50"></textarea><br><br>
 
         <button type="submit">Schedule Meeting</button><br><br>
-        <button type="button" id="previewButton" style="background-color: #3e8e41;">Preview</button>
+        <button type="button" id="previewButton" style="background-color: #3e8e41;">Preview</button><br><br>
     </form>
 
     <script>

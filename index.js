@@ -68,7 +68,6 @@ function verifyToken(req, res, next) {
     // If yes, skip authentication and proceed to the next middleware
     return next();
   }
-
   // If not from /Meet route, redirect to the /Cust_login route
   if (!token) {
     // Redirect to login page based on the URL
@@ -103,7 +102,6 @@ app.post('/schedule-meeting', (req, res) => {
         res.send("Meeting Scheduled");
     }
 );
-
 });
 
 // Render the result page with all meetings
@@ -304,58 +302,74 @@ app.get("/api/delete-all-Customer-logs", (req, res) => {
   });
 });
 
-app.post('/send-otp', async (err,res)=>{
+// app.post('/send-otp', async (err,res)=>{
+//   try {
+//     const generatedOtp = generateOTP();
+
+//     const response = await axios.post('https://d2c-communication-uat.chola.murugappa.com/SMS/SEND', {
+//       enterpriseid: "chfinotp",
+//       subEnterpriseid: "chfinotp",
+//       msisdn: "8210731776",
+//       intflag: "false",
+//       msgid: "1603312300682",
+//       sender: "CHOFIN",
+//       contenttype: "1",
+//       language: "en",
+//       name: "1611209806672",
+//       msgtext: `Your secret OTP to login to the Chola One APP is ${generatedOtp}. DO NOT disclose your OTP to anyone - Team Chola 76iyyiiiu`,
+//       productType: "KYC",
+//       environment: "UAT"
+//     }, {
+//       headers: {
+//         'Content-Type': 'application/json',
+//       },
+//     });
+
+//     if (response.status >= 200 && response.status < 300) {
+//       // Handle the success response
+//       console.log('API Response:', response.data);
+//       res.status(200).send('OTP sent successfully');
+//     } else {
+//       // Handle the error response
+//       console.error('Error sending OTP:', response.status, response.statusText);
+      
+//       // Log additional information from the response headers
+//       console.log('Response Headers:', response.headers);
+      
+//       res.status(response.status).send(`Error sending OTP: ${response.statusText}`);
+//     }
+//   } catch (error) {
+//     // Handle unexpected errors
+//     console.error('Unexpected error sending OTP:', error.message);
+//     res.status(500).send('Unexpected error sending OTP');
+//   }
+// });
+
+// Handle POST request to generate OTP
+app.post('/send-otp', async (req, res) => {
   try {
     const generatedOtp = generateOTP();
 
-    const response = await axios.post('https://d2c-communication-uat.chola.murugappa.com/SMS/SEND', {
-      enterpriseid: "chfinotp",
-      subEnterpriseid: "chfinotp",
-      msisdn: "8210731776",
-      intflag: "false",
-      msgid: "1603312300682",
-      sender: "CHOFIN",
-      contenttype: "1",
-      language: "en",
-      name: "1611209806672",
-      msgtext: `Your secret OTP to login to the Chola One APP is ${generatedOtp}. DO NOT disclose your OTP to anyone - Team Chola 76iyyiiiu`,
-      productType: "KYC",
-      environment: "UAT"
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (response.status >= 200 && response.status < 300) {
-      // Handle the success response
-      console.log('API Response:', response.data);
-      res.status(200).send('OTP sent successfully');
-    } else {
-      // Handle the error response
-      console.error('Error sending OTP:', response.status, response.statusText);
-      
-      // Log additional information from the response headers
-      console.log('Response Headers:', response.headers);
-      
-      res.status(response.status).send(`Error sending OTP: ${response.statusText}`);
+    // Emit the generated OTP to the next connected socket
+    if (nextSocket) {
+      nextSocket.emit('otp-generated', { otp: generatedOtp });
     }
+
+    res.status(200).json({ otp: generatedOtp });
   } catch (error) {
-    // Handle unexpected errors
-    console.error('Unexpected error sending OTP:', error.message);
-    res.status(500).send('Unexpected error sending OTP');
+    console.error('Error generating OTP:', error.message);
+    res.status(500).send('Error generating OTP');
   }
 });
 
-function generateOTP(){
-  let digit = '0123456789abcdefghijklmnopqrstuvwxyz';
-  let OTP = '';
-
-  for(let i = 0; i < 6; i++){
-    OTP+= digit[Math.floor(Math.random() * 10)];
+function generateOTP() {
+  let OTP = ''; 
+  for(let i = 0; i < 6; i++) {
+    OTP += Math.floor(Math.random() * 10); // Generate random digits from 0 to 9
   }
   return OTP;
 }
+
 
 const server = app.listen(port, () => {
   console.log(`listening on ${port}`);
@@ -364,11 +378,13 @@ const server = app.listen(port, () => {
 // --- JOINING THE ROOM USING socket ---
 //socket io working with the signaling server
 var io = socket(server);
+let nextSocket;
 
 //"io.on" is used to make sure that the connection is established successfully
 //Hence, generating the socket id each time the server is being hit.
 io.on("connection", function (socket) {
   console.log("Client is connected: " + socket.id);
+  
 
   socket.on("Join", function (join) {
     // Check if the roomName matches any unique ID in the database
@@ -408,6 +424,16 @@ io.on("connection", function (socket) {
               // Room exists and has one participant, join it
               socket.join(roomName);
               socket.emit("joined");
+              if (nextSocket) {
+                nextSocket.emit('send-otp');
+              }
+              nextSocket = socket;
+            
+              socket.on('disconnect', () => {
+                if (nextSocket === socket) {
+                  nextSocket = null;
+                }
+              });
             } else {
               // Room is full, emit a full event
               socket.emit("full");
@@ -416,9 +442,10 @@ io.on("connection", function (socket) {
         }
       }
     );
+
+    
   });
-  
-  
+
   
   //At first, [ signaling server]
   socket.on("ready", function (roomName) {
@@ -452,3 +479,4 @@ io.on("connection", function (socket) {
     socket.broadcast.to(roomName).emit("leave");
   });
 });
+
